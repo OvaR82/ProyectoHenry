@@ -107,12 +107,15 @@ model.fit(X_train_poly, y_train)
 y_pred = model.predict(X_test_poly)
 rmse = np.sqrt(mean_squared_error(y_test, y_pred))
 
-# GET para obtener la predicción de precio y RMSE
+# Obtener todos los géneros únicos
+all_genres = steam_unnested['genres'].unique().tolist()
+
+# Definición de API
 @app.get("/prediccion/")
 async def get_prediccion(
     genero: str = Query(
         ...,  # Esto significa que el parámetro es requerido
-        description="El género del juego debe ser uno de los siguientes: " + ', '.join(steam_dummies.columns[steam_dummies.columns.str.contains('genres')]),
+        description="El género del juego debe ser uno de los siguientes: " + ', '.join(all_genres),
     ),
     año: int = Query(
         ...,  # Esto significa que el parámetro es requerido
