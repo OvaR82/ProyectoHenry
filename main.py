@@ -26,8 +26,8 @@ data_steam = pd.DataFrame(rows)
 
 #Limpieza de data
 data_steam['release_date'] = pd.to_datetime(data_steam['release_date'], errors='coerce')
-specific_date = pd.to_datetime('1900-01-01')
-data_steam['release_date'] = data_steam['release_date'].fillna(specific_date)
+#specific_date = pd.to_datetime('1900-01-01')
+data_steam = data_steam.dropna(subset=['release_date'])
 data_steam['metascore'] = pd.to_numeric(data_steam['metascore'], errors='coerce')
 data_steam['price'] = pd.to_numeric(data_steam['price'], errors='coerce')
 
