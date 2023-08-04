@@ -87,10 +87,10 @@ steam_unnested = data_steam.explode('genres')
 steam_unnested['release_year'] = steam_unnested['release_date'].dt.year
 
 # Convertir 'genres' a números (usando one-hot encoding)
-steam_unnested = pd.get_dummies(steam_unnested, columns=['genres'], prefix='', prefix_sep='')
+steam_dummies = pd.get_dummies(steam_unnested, columns=['genres'], prefix='', prefix_sep='')
 
 # Dividir en entrenamiento y prueba
-X = steam_unnested[['release_year', 'metascore'] + list(steam_unnested.columns[steam_unnested.columns.str.contains('genres')])]
+X = steam_unnested[['release_year', 'metascore'] + list(steam_dummies.columns[steam_dummies.columns.str.contains('genres')])]
 y = steam_unnested['price']
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
@@ -107,18 +107,12 @@ model.fit(X_train_poly, y_train)
 y_pred = model.predict(X_test_poly)
 rmse = np.sqrt(mean_squared_error(y_test, y_pred))
 
-# GET para obtener todos los géneros posibles
-@app.get("/generos/")
-async def get_generos():
-    genres = list(steam_unnested.columns[steam_unnested.columns.str.contains('genres')])
-    return genres
-
 # GET para obtener la predicción de precio y RMSE
 @app.get("/prediccion/")
 async def get_prediccion(
     genero: str = Query(
         ...,  # Esto significa que el parámetro es requerido
-        description="El género del juego. Debe ser uno de los siguientes: " + ', '.join(steam_unnested.columns[steam_unnested.columns.str.contains('genres')]),
+        description="El género del juego debe ser uno de los siguientes: " + ', '.join(steam_unnested.columns[steam_unnested.columns.str.contains('genres')]),
     ),
     año: int = Query(
         ...,  # Esto significa que el parámetro es requerido
