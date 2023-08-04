@@ -107,12 +107,19 @@ model.fit(X_train_poly, y_train)
 y_pred = model.predict(X_test_poly)
 rmse = np.sqrt(mean_squared_error(y_test, y_pred))
 
+# GET para obtener todos los géneros posibles
+@app.get("/generos/")
+async def get_generos():
+    genres = list(steam_unnested.columns[steam_unnested.columns.str.contains('genres')])
+    return genres
+
 # GET para obtener la predicción de precio y RMSE
 @app.get("/prediccion/")
 async def get_prediccion(genero: str, año: int, metascore: int):
     # Convertir 'genero' a números (usando one-hot encoding)
-    # Tendrías que tener una lista con todos los géneros posibles de tus datos de entrenamiento
     genres = list(steam_unnested.columns[steam_unnested.columns.str.contains('genres')])
+    if genero not in genres:
+        raise HTTPException(status_code=400, detail="Genero no válido. Utilice el endpoint /generos/ para ver los géneros válidos.")
     genre_data = [1 if genero == genre else 0 for genre in genres]
     data = np.array([año, metascore] + genre_data).reshape(1, -1)
     
