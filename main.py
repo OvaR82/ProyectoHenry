@@ -42,7 +42,7 @@ max_year = data_steam['release_date'].dt.year.max()
 
 def check_year(year: int):
     if year < min_year or year > max_year:
-        raise HTTPException(status_code=400, detail=f"Año no válido. Elija un año entre {min_year} y {max_year}.")
+        raise HTTPException(status_code=400, detail=f"Año sin registro en la base de datos. Elija un año entre {min_year} y {max_year}.")
 
 # Función que retorna los 5 géneros más vendidos
 @app.get('/genero/')
