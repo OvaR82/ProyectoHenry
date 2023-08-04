@@ -113,20 +113,24 @@ rmse = np.sqrt(mean_squared_error(y_test, y_pred))
 # Obtener todos los géneros únicos
 all_genres = steam_unnested['genres'].unique().tolist()
 
+# Obtener los años mínimo y máximo de lanzamiento
+min_year = steam_unnested['release_year'].min()
+max_year = steam_unnested['release_year'].max()
+
 # Definición de API
 @app.get("/prediccion/")
 async def get_prediccion(
     genero: str = Query(
         ...,  # Esto significa que el parámetro es requerido
-        description="El género del juego debe ser uno de los siguientes: " + ', '.join(all_genres),
+        description="Elija el género del juego entre los siguientes: " + ', '.join(all_genres),
     ),
     año: int = Query(
         ...,  # Esto significa que el parámetro es requerido
-        description="El año de lanzamiento del juego.",
+        description=f"Elija el año de lanzamiento del juego, entre {min_year} y {max_year}.",
     ),
     metascore: int = Query(
         ...,  # Esto significa que el parámetro es requerido
-        description="El Metascore del juego.",
+        description="Elija el Metascore del juego.",
     )
 ):
     # Convertir 'genero' a números (usando one-hot encoding)
