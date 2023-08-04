@@ -3,6 +3,7 @@ import json
 import ast
 import pandas as pd
 import numpy as np
+import pickle
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
@@ -11,8 +12,8 @@ from fastapi import FastAPI
 from datetime import datetime
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
-import pandas as pd
-import pickle
+from typing import Dict
+
 
 # Implementación de FastAPI
 app = FastAPI()
@@ -36,9 +37,17 @@ replacement_values = {'publisher': '', 'genres': '', 'tags': '', 'discount_price
 data_steam.fillna(value=replacement_values, inplace=True)
 
 # Definición de la API con información de los juegos según año de lanzamiento
+min_year = data_steam['release_date'].dt.year.min()
+max_year = data_steam['release_date'].dt.year.max()
+
+def check_year(year: int):
+    if year < min_year or year > max_year:
+        raise HTTPException(status_code=400, detail=f"Año no válido. Elija un año entre {min_year} y {max_year}.")
+
 # Función que retorna los 5 géneros más vendidos
 @app.get('/genero/')
 def genero(año: int):
+    check_year(año)
     filtered_data_steam = data_steam[data_steam['release_date'].dt.year == año]
     # desanidar
     exploded_genres_data_steam = filtered_data_steam.explode('genres')
@@ -48,6 +57,7 @@ def genero(año: int):
 # Función que retorna los juegos lanzados
 @app.get('/juegos/')
 def juegos(año: int):
+    check_year(año)
     filtered_data_steam = data_steam[data_steam['release_date'].dt.year == año]
     released_games = filtered_data_steam['app_name'].to_list()
     return {"juegos": released_games}
@@ -55,6 +65,7 @@ def juegos(año: int):
 # Función que retorna el top 5 de especificaciones
 @app.get('/especificaciones/')
 def especificaciones(año: int):
+    check_year(año)
     filtered_data_steam = data_steam[data_steam['release_date'].dt.year == año]
     exploded_specs_data_steam = filtered_data_steam.explode('specs')
     top_specs = exploded_specs_data_steam['specs'].value_counts().nlargest(5).to_dict()
@@ -63,20 +74,26 @@ def especificaciones(año: int):
 # Función que retorna la cantidad de juegos con acceso temprano 
 @app.get('/acceso_temprano/')
 def acceso_temprano(año: int):
+    check_year(año)
     filtered_data_steam = data_steam[data_steam['release_date'].dt.year == año]
     count_early_access = len(filtered_data_steam[filtered_data_steam['early_access'] == True])
     return {"early_access_games": count_early_access}
 
 # Función que retorna el tipo y cantidad de opiniones registradas
 @app.get('/opiniones/')
-def opiniones(año: int):
+def opiniones(año: int) -> Dict[str, int]:
+    check_year(año)
     filtered_data_steam = data_steam[data_steam['release_date'].dt.year == año]
-    sentiment_counts = filtered_data_steam['sentiment'].value_counts().to_dict()
+    sentiments = ['Very Positive', 'Mixed', 'Mostly Positive', 'Positive', 'Overwhelmingly Positive',
+                  'Mostly Negative', 'Negative', 'Very Negative', 'Overwhelmingly Negative']
+    filtered_sentiments = filtered_data_steam[filtered_data_steam['sentiment'].isin(sentiments)]
+    sentiment_counts = filtered_sentiments['sentiment'].value_counts().to_dict()
     return sentiment_counts
 
 # Función que retorna el top 5 de juegos según su puntuación
 @app.get('/metascore/')
 def metascore(año: int):
+    check_year(año)
     filtered_data_steam = data_steam[data_steam['release_date'].dt.year == año]
     top_metascore_games = filtered_data_steam.nlargest(5, 'metascore')[['app_name', 'metascore']].set_index('app_name').to_dict()['metascore']
     return top_metascore_games
@@ -114,10 +131,6 @@ rmse = np.sqrt(mean_squared_error(y_test, y_pred))
 # Definición de la API que muestra la predicción de precios y RMSE
 # Obtención de todos los géneros únicos
 all_genres = steam_unnested['genres'].unique().tolist()
-
-# Obtención del año mínimo y máximo de lanzamiento
-min_year = steam_unnested['release_year'].min()
-max_year = steam_unnested['release_year'].max()
 
 # Función que retorna el precio y el RMSE del juego según género, año y metascore a seleccionar
 @app.get("/prediccion/")
