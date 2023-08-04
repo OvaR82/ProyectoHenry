@@ -83,11 +83,14 @@ def acceso_temprano(año: int):
 @app.get('/opiniones/')
 def opiniones(año: int) -> Dict[str, int]:
     check_year(año)
-    filtered_data_steam = data_steam[data_steam['release_date'].dt.year == año]
-    sentiments = ['Very Positive', 'Mixed', 'Mostly Positive', 'Positive', 'Overwhelmingly Positive',
-                  'Mostly Negative', 'Negative', 'Very Negative', 'Overwhelmingly Negative']
-    filtered_sentiments = filtered_data_steam[filtered_data_steam['sentiment'].isin(sentiments)]
-    sentiment_counts = filtered_sentiments['sentiment'].value_counts().to_dict()
+    sentiments = ['Very Positive', 'Mixed', 'Mostly Positive', 'Positive', 
+                  'Overwhelmingly Positive', 'Mostly Negative', 'Negative', 
+                  'Very Negative', 'Overwhelmingly Negative']
+    filtered_data_steam = data_steam[(data_steam['release_date'].dt.year == año) 
+                                     & (data_steam['sentiment'].isin(sentiments))]
+    sentiment_counts = filtered_data_steam['sentiment'].value_counts().to_dict()
+    if not sentiment_counts: 
+        return {"message": "No se encontraron opiniones relevantes en este año"}
     return sentiment_counts
 
 # Función que retorna el top 5 de juegos según su puntuación
