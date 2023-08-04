@@ -8,7 +8,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
 from fastapi import FastAPI
 from datetime import datetime
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 import pandas as pd
 import pickle
@@ -115,11 +115,24 @@ async def get_generos():
 
 # GET para obtener la predicción de precio y RMSE
 @app.get("/prediccion/")
-async def get_prediccion(genero: str, año: int, metascore: int):
+async def get_prediccion(
+    genero: str = Query(
+        ...,  # Esto significa que el parámetro es requerido
+        description="El género del juego. Debe ser uno de los siguientes: " + ', '.join(steam_unnested.columns[steam_unnested.columns.str.contains('genres')]),
+    ),
+    año: int = Query(
+        ...,  # Esto significa que el parámetro es requerido
+        description="El año de lanzamiento del juego.",
+    ),
+    metascore: int = Query(
+        ...,  # Esto significa que el parámetro es requerido
+        description="El Metascore del juego.",
+    )
+):
     # Convertir 'genero' a números (usando one-hot encoding)
     genres = list(steam_unnested.columns[steam_unnested.columns.str.contains('genres')])
     if genero not in genres:
-        raise HTTPException(status_code=400, detail="Genero no válido. Utilice el endpoint /generos/ para ver los géneros válidos.")
+        raise HTTPException(status_code=400, detail="Género no válido. Por favor use un género de la lista de géneros disponibles.")
     genre_data = [1 if genero == genre else 0 for genre in genres]
     data = np.array([año, metascore] + genre_data).reshape(1, -1)
     
