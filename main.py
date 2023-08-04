@@ -128,9 +128,9 @@ async def get_prediccion(
 ):
     # Convertir 'genero' a números (usando one-hot encoding)
     genres = list(steam_dummies.columns[steam_dummies.columns.str.contains('genres')])
-    if genero not in genres:
+    if genero not in all_genres:
         raise HTTPException(status_code=400, detail="Género no válido. Por favor use un género de la lista de géneros disponibles.")
-    genre_data = [1 if genero == genre else 0 for genre in genres]
+    genre_data = [1 if genre == genero else 0 for genre in genres]
     data = np.array([año, metascore] + genre_data).reshape(1, -1)
     
     # Aplicar la transformación polinomial
@@ -138,3 +138,4 @@ async def get_prediccion(
 
     price = model.predict(data_poly)[0]
     return {'price': price, 'rmse': rmse}
+
