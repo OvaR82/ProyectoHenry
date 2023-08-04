@@ -1,3 +1,4 @@
+# Importación de librerías necesarias
 import json
 import ast
 import pandas as pd
@@ -13,127 +14,128 @@ from pydantic import BaseModel
 import pandas as pd
 import pickle
 
-#Comienzo de la api
-#para levantar fast api: uvicorn main:app --reload
+# Implementación de FastAPI
 app = FastAPI()
 
-#lectura del json y creación data frame
-rows = []
-with open('steam_games.json') as f: 
-    rows.extend(ast.literal_eval(line) for line in f)
-data_steam = pd.DataFrame(rows)
+# Recuperación de datos desde un archivo .json 
+dataset = []
+with open('dataset/steam_games.json') as f: 
+    dataset.extend(ast.literal_eval(line) for line in f)
 
+# Creación del dataframe a partir del dataset obtenido
+data_steam = pd.DataFrame(dataset)
 
-#Limpieza de data
+# Adecuación y limpieza del dataframe
 data_steam['release_date'] = pd.to_datetime(data_steam['release_date'], errors='coerce')
-#specific_date = pd.to_datetime('1900-01-01')
 data_steam = data_steam.dropna(subset=['release_date'])
 data_steam['metascore'] = pd.to_numeric(data_steam['metascore'], errors='coerce')
 data_steam['price'] = pd.to_numeric(data_steam['price'], errors='coerce')
-
 replacement_values = {'publisher': '', 'genres': '', 'tags': '', 'discount_price': 0, 'price': 0,
                       'specs': '', 'reviews_url': '', 'metascore': 0, 'app_name': '', 'title': '',
                        'id': '', 'sentiment': '', 'developer': ''}
 data_steam.fillna(value=replacement_values, inplace=True)
 
-# Retorna los 5 géneros más vendidos en el año indicado
+# Definición de la API con información de los juegos según año de lanzamiento
+# Función que retorna los 5 géneros más vendidos
 @app.get('/genero/')
 def genero(año: int):
     filtered_data_steam = data_steam[data_steam['release_date'].dt.year == año]
     # desanidar
     exploded_genres_data_steam = filtered_data_steam.explode('genres')
-    top_genres = exploded_genres_data_steam['genres'].value_counts().nlargest(5).index.tolist()
+    top_genres = exploded_genres_data_steam['genres'].value_counts().nlargest(5).to_dict()
     return top_genres
 
-# Retorna juegos lanzados en el año indicado
+# Función que retorna los juegos lanzados
 @app.get('/juegos/')
 def juegos(año: int):
     filtered_data_steam = data_steam[data_steam['release_date'].dt.year == año]
-    released_games = filtered_data_steam['app_name'].tolist()
-    return released_games
+    released_games = filtered_data_steam['app_name'].to_list()
+    return {"juegos": released_games}
 
-# Retorna 5 specs más repetidos en el año indicado
-@app.get('/specs/')
-def specs(año: int):
+# Función que retorna el top 5 de especificaciones
+@app.get('/especificaciones/')
+def especificaciones(año: int):
     filtered_data_steam = data_steam[data_steam['release_date'].dt.year == año]
     exploded_specs_data_steam = filtered_data_steam.explode('specs')
-    top_specs = exploded_specs_data_steam['specs'].value_counts().nlargest(5).index.tolist()
+    top_specs = exploded_specs_data_steam['specs'].value_counts().nlargest(5).to_dict()
     return top_specs
 
-# Retorna cantidad de juegos lanzados con early acces en el año indicado
-@app.get('/earlyacces/')
-def earlyacces(año: int):
+# Función que retorna la cantidad de juegos con acceso temprano 
+@app.get('/acceso_temprano/')
+def acceso_temprano(año: int):
     filtered_data_steam = data_steam[data_steam['release_date'].dt.year == año]
     count_early_access = len(filtered_data_steam[filtered_data_steam['early_access'] == True])
-    return count_early_access
+    return {"early_access_games": count_early_access}
 
-# Retorna lista con registros categorizados con un "sentiment" específico, en el año indicado
-@app.get('/sentiment/')
-def sentiment(año: int):
+# Función que retorna el tipo y cantidad de opiniones registradas
+@app.get('/opiniones/')
+def opiniones(año: int):
     filtered_data_steam = data_steam[data_steam['release_date'].dt.year == año]
     sentiment_counts = filtered_data_steam['sentiment'].value_counts().to_dict()
     return sentiment_counts
 
-# Retorna los 5 juegos con mayor metascore en el año indicado
+# Función que retorna el top 5 de juegos según su puntuación
 @app.get('/metascore/')
 def metascore(año: int):
     filtered_data_steam = data_steam[data_steam['release_date'].dt.year == año]
     top_metascore_games = filtered_data_steam.nlargest(5, 'metascore')[['app_name', 'metascore']].set_index('app_name').to_dict()['metascore']
     return top_metascore_games
 
+# Armado del modelo predictivo
+# Extracción datos desde listas anidadas en 'genres'
 steam_unnested = data_steam.explode('genres')
 steam_unnested['genres'] = steam_unnested['genres'].replace('', np.nan)
 steam_unnested = steam_unnested.dropna(subset=['genres'])
-print(steam_unnested['genres'].unique())
 
-# Convertir 'release_date' a año
+# Conversión de 'release_date' a año
 steam_unnested['release_year'] = steam_unnested['release_date'].dt.year
 
-# Convertir 'genres' a números (usando one-hot encoding)
+# Conversión de 'genres' a valores numéricos 
 steam_dummies = pd.get_dummies(steam_unnested, columns=['genres'], prefix='', prefix_sep='')
 
-# Dividir en entrenamiento y prueba
+# División del dataframe en sets de entrenamiento y prueba
 X = steam_dummies[['release_year', 'metascore'] + list(steam_dummies.columns[steam_dummies.columns.str.contains('genres')])]
 y = steam_dummies['price']
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Crear características polinomiales
+# Definición de la características polinomiales para el modelo predictivo
 poly = PolynomialFeatures(degree=2)
 X_train_poly = poly.fit_transform(X_train)
 X_test_poly = poly.transform(X_test)
 
-# Entrenar modelo
+# Entrenamiento del modelo
 model = LinearRegression()
 model.fit(X_train_poly, y_train)
 
-# Evaluar modelo
+# Evaluación del modelo
 y_pred = model.predict(X_test_poly)
 rmse = np.sqrt(mean_squared_error(y_test, y_pred))
 
-# Obtener todos los géneros únicos
+# Definición de la API que muestra la predicción de precios y RMSE
+# Obtención de todos los géneros únicos
 all_genres = steam_unnested['genres'].unique().tolist()
 
-# Obtener los años mínimo y máximo de lanzamiento
+# Obtención del año mínimo y máximo de lanzamiento
 min_year = steam_unnested['release_year'].min()
 max_year = steam_unnested['release_year'].max()
 
-# Definición de API
+# Función que retorna el precio y el RMSE del juego según género, año y metascore a seleccionar
 @app.get("/prediccion/")
 async def get_prediccion(
     genero: str = Query(
-        ...,  # Esto significa que el parámetro es requerido
+        ...,  # Parámetro requerido
         description="Elija el género del juego entre los siguientes: " + ', '.join(all_genres),
     ),
     año: int = Query(
-        ...,  # Esto significa que el parámetro es requerido
+        ...,  # Parámetro requerido
         description=f"Elija el año de lanzamiento del juego, entre {min_year} y {max_year}.",
     ),
     metascore: int = Query(
-        ...,  # Esto significa que el parámetro es requerido
+        ...,  # Parámetro requerido
         description="Elija el Metascore del juego.",
     )
 ):
-    # Convertir 'genero' a números (usando one-hot encoding)
+    # Usar dummies de 'genres'
     genres = list(steam_dummies.columns[steam_dummies.columns.str.contains('genres')])
     if genero not in all_genres:
         raise HTTPException(status_code=400, detail="Género no válido. Por favor use un género de la lista de géneros disponibles.")
@@ -142,7 +144,6 @@ async def get_prediccion(
     
     # Aplicar la transformación polinomial
     data_poly = poly.transform(data)
-
     price = model.predict(data_poly)[0]
     return {'price': price, 'rmse': rmse}
 
