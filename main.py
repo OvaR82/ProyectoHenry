@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from datetime import datetime
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
-from typing import Dict
+from typing import Dict, Union
 
 
 # Implementación de FastAPI
@@ -81,21 +81,17 @@ def acceso_temprano(año: int):
 
 # Función que retorna el tipo y cantidad de opiniones registradas
 @app.get('/opiniones/')
-def opiniones(año: int) -> Dict[str, int]:
-    try:
-        check_year(año)
-        sentiments = ['Very Positive', 'Mixed', 'Mostly Positive', 'Positive', 
-                      'Overwhelmingly Positive', 'Mostly Negative', 'Negative', 
-                      'Very Negative', 'Overwhelmingly Negative']
-        filtered_data_steam = data_steam[(data_steam['release_date'].dt.year == año) 
-                                         & (data_steam['sentiment'].isin(sentiments))]
-        sentiment_counts = filtered_data_steam['sentiment'].value_counts().to_dict()
-        if not sentiment_counts: 
-            return {"message": "No se encontraron opiniones relevantes en este año"}
-        return sentiment_counts
-    except Exception as e:
-        return {"error": str(e)}
-
+def opiniones(año: int) -> Dict[str, Union[int, str]]:
+    check_year(año)
+    sentiments = ['Very Positive', 'Mixed', 'Mostly Positive', 'Positive', 
+                  'Overwhelmingly Positive', 'Mostly Negative', 'Negative', 
+                  'Very Negative', 'Overwhelmingly Negative']
+    filtered_data_steam = data_steam[(data_steam['release_date'].dt.year == año) 
+                                     & (data_steam['sentiment'].isin(sentiments))]
+    sentiment_counts = filtered_data_steam['sentiment'].value_counts().to_dict()
+    if not sentiment_counts: 
+        return {"message": "No se encontraron opiniones relevantes en este año"}
+    return sentiment_counts
 
 # Función que retorna el top 5 de juegos según su puntuación
 @app.get('/metascore/')
