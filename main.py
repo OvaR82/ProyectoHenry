@@ -82,7 +82,9 @@ def metascore(año: int):
     return top_metascore_games
 
 steam_unnested = data_steam.explode('genres')
+steam_unnested['genres'] = steam_unnested['genres'].replace('', np.nan)
 steam_unnested = steam_unnested.dropna(subset=['genres'])
+print(steam_unnested['genres'].unique())
 
 # Convertir 'release_date' a año
 steam_unnested['release_year'] = steam_unnested['release_date'].dt.year
