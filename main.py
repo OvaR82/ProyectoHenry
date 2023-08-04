@@ -90,8 +90,8 @@ steam_unnested['release_year'] = steam_unnested['release_date'].dt.year
 steam_dummies = pd.get_dummies(steam_unnested, columns=['genres'], prefix='', prefix_sep='')
 
 # Dividir en entrenamiento y prueba
-X = steam_unnested[['release_year', 'metascore'] + list(steam_dummies.columns[steam_dummies.columns.str.contains('genres')])]
-y = steam_unnested['price']
+X = steam_dummies[['release_year', 'metascore'] + list(steam_dummies.columns[steam_dummies.columns.str.contains('genres')])]
+y = steam_dummies['price']
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # Crear características polinomiales
@@ -112,7 +112,7 @@ rmse = np.sqrt(mean_squared_error(y_test, y_pred))
 async def get_prediccion(
     genero: str = Query(
         ...,  # Esto significa que el parámetro es requerido
-        description="El género del juego debe ser uno de los siguientes: " + ', '.join(steam_unnested.columns[steam_unnested.columns.str.contains('genres')]),
+        description="El género del juego debe ser uno de los siguientes: " + ', '.join(steam_dummies.columns[steam_dummies.columns.str.contains('genres')]),
     ),
     año: int = Query(
         ...,  # Esto significa que el parámetro es requerido
@@ -124,7 +124,7 @@ async def get_prediccion(
     )
 ):
     # Convertir 'genero' a números (usando one-hot encoding)
-    genres = list(steam_unnested.columns[steam_unnested.columns.str.contains('genres')])
+    genres = list(steam_dummies.columns[steam_dummies.columns.str.contains('genres')])
     if genero not in genres:
         raise HTTPException(status_code=400, detail="Género no válido. Por favor use un género de la lista de géneros disponibles.")
     genre_data = [1 if genero == genre else 0 for genre in genres]
