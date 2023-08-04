@@ -49,7 +49,6 @@ def check_year(year: int):
 def genero(año: int):
     check_year(año)
     filtered_data_steam = data_steam[data_steam['release_date'].dt.year == año]
-    # desanidar
     exploded_genres_data_steam = filtered_data_steam.explode('genres')
     top_genres = exploded_genres_data_steam['genres'].value_counts().nlargest(5).to_dict()
     return top_genres
@@ -64,11 +63,13 @@ def juegos(año: int):
 
 # Función que retorna el top 5 de especificaciones
 @app.get('/especificaciones/')
-def especificaciones(año: int):
+def especificaciones(año: int) -> Dict[str, Union[int, str]]:
     check_year(año)
     filtered_data_steam = data_steam[data_steam['release_date'].dt.year == año]
     exploded_specs_data_steam = filtered_data_steam.explode('specs')
     top_specs = exploded_specs_data_steam['specs'].value_counts().nlargest(5).to_dict()
+    if not top_specs: 
+        return {"message": "No se encontraron especificaciones de juegos en este año"}
     return top_specs
 
 # Función que retorna la cantidad de juegos con acceso temprano 
